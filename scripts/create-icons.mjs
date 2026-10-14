@@ -72,6 +72,7 @@ fs.writeFileSync(
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><rect width="1024" height="1024" rx="184" fill="#244b3a"/><path d="M298 532l128 128 300-332" fill="none" stroke="#fffdf8" stroke-width="96" stroke-linecap="round" stroke-linejoin="round"/></svg>\n`
 );
 
+const icoPng = png(256);
 const icoHeader = Buffer.alloc(22);
 icoHeader.writeUInt16LE(0, 0);
 icoHeader.writeUInt16LE(1, 2);
@@ -82,16 +83,17 @@ icoHeader[8] = 0;
 icoHeader[9] = 0;
 icoHeader.writeUInt16LE(1, 10);
 icoHeader.writeUInt16LE(32, 12);
-icoHeader.writeUInt32LE(iconPng.length, 14);
+icoHeader.writeUInt32LE(icoPng.length, 14);
 icoHeader.writeUInt32LE(22, 18);
-fs.writeFileSync(path.join(buildDir, 'icon.ico'), Buffer.concat([icoHeader, iconPng]));
+fs.writeFileSync(path.join(buildDir, 'icon.ico'), Buffer.concat([icoHeader, icoPng]));
 
 if (os.platform() === 'darwin') {
   const iconset = path.join(buildDir, 'icon.iconset');
   fs.rmSync(iconset, { recursive: true, force: true });
   fs.mkdirSync(iconset, { recursive: true });
-  for (const size of [16, 32, 64, 128, 256, 512, 1024]) {
+  for (const size of [16, 32, 128, 256, 512]) {
     fs.writeFileSync(path.join(iconset, `icon_${size}x${size}.png`), png(size));
+    fs.writeFileSync(path.join(iconset, `icon_${size}x${size}@2x.png`), png(size * 2));
   }
   execFileSync('iconutil', ['-c', 'icns', iconset, '-o', path.join(buildDir, 'icon.icns')], { stdio: 'inherit' });
 } else if (!fs.existsSync(path.join(buildDir, 'icon.icns'))) {
