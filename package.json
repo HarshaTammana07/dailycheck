@@ -23,7 +23,7 @@
     "release:draft": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --publish=never",
     "website:check": "node scripts/check-website-links.mjs",
     "test:edge": "node --test scripts/test-edge-functions.mjs",
-    "test:release": "node --test scripts/test-release-assets.mjs",
+    "test:release": "node --test scripts/test-release-assets.mjs scripts/test-release-environment.mjs",
     "website:build": "node scripts/build-download-site.mjs"
   },
   "dependencies": {
