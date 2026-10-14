@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DailyCheck</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="./downloads.js" defer></script>
+  </head>
+  <body>
+    <header class="hero">
+      <nav>
+        <strong>DailyCheck</strong>
+        <a href="#install">Install</a>
+        <a href="#privacy">Privacy</a>
+        <a href="#release">Release</a>
+      </nav>
+      <div class="hero-grid">
+        <section>
+          <p class="eyebrow">Version <span data-version>1.0.0</span></p>
+          <h1>DailyCheck</h1>
+          <p class="lede">Your daily tasks, one month at a time.</p>
+          <div class="download-row" id="install">
+            <a class="download disabled" aria-disabled="true" href="#release" data-artifact="windows-x64">Download for Windows</a>
+            <a class="download disabled" aria-disabled="true" href="#release" data-artifact="mac-arm64">Download for macOS Apple Silicon</a>
+            <a class="download disabled" aria-disabled="true" href="#release" data-artifact="mac-x64">Download for macOS Intel</a>
+          </div>
+          <p class="note" data-download-note>Download links become active after the first GitHub Release publishes real installer artifacts.</p>
+        </section>
+        <img src="./assets/dailycheck-preview.svg" alt="DailyCheck month view and selected day checklist" />
+      </div>
+    </header>
+    <main>
+      <section class="band">
+        <h2>Install flow</h2>
+        <div class="steps">
+          <article>
+            <span>1</span>
+            <h3>Download</h3>
+            <p>Pick the installer that matches your operating system and CPU architecture.</p>
+          </article>
+          <article>
+            <span>2</span>
+            <h3>Sign in</h3>
+            <p>Use Supabase email and password authentication, then verify this device.</p>
+          </article>
+          <article>
+            <span>3</span>
+            <h3>Update</h3>
+            <p>The Windows app checks GitHub Releases and offers updates while keeping your tasks. Production builds require signing; unsigned Mac updates are disabled.</p>
+          </article>
+        </div>
+      </section>
+      <section class="split" id="privacy">
+        <div>
+          <h2>Privacy summary</h2>
+          <p>Checklist tasks and completion history stay in local IndexedDB. The cloud backend stores only user identity and device authorization records for the two-device limit.</p>
+        </div>
+        <div>
+          <h2>Changelog</h2>
+          <p>Publish release notes with each GitHub Release. The desktop app displays those notes before downloading an update.</p>
+        </div>
+      </section>
+      <section class="release" id="release">
+        <h2>Release links</h2>
+        <p>Get current installers and read what changed in each version.</p>
+        <a data-release-link href="https://github.com/HarshaTammana07/dailycheck/releases">GitHub Releases and changelog</a>
+      </section>
+    </main>
+  </body>
+</html>

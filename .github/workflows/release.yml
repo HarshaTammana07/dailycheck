@@ -1,0 +1,127 @@
+name: Desktop Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version already committed in package.json
+        required: true
+        default: '1.0.0'
+      release_mode:
+        description: Development is unsigned; production requires signing secrets
+        type: choice
+        options: [development, production]
+        default: development
+      include_macos:
+        description: Also build Apple Silicon and Intel DMG/ZIP packages
+        type: boolean
+        default: true
+      publish:
+        description: Publish all successful builds to GitHub Releases
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+env:
+  RELEASE_VERSION: ${{ inputs.version }}
+  RELEASE_MODE: ${{ inputs.release_mode }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: node scripts/validate-release.mjs
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:edge
+      - run: npm run test:release
+      - run: npm run website:check
+  windows:
+    needs: checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run icons
+      - run: npm run build
+      - name: Build Windows installer
+        run: node scripts/build-release.mjs windows $env:RELEASE_MODE
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          if-no-files-found: error
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+  macos:
+    needs: checks
+    if: inputs.include_macos
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run icons
+      - run: npm run build
+      - name: Build both macOS architectures together
+        run: node scripts/build-release.mjs macos "$RELEASE_MODE"
+        env:
+          CSC_LINK: ${{ secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          if-no-files-found: error
+          path: |
+            release/*.dmg
+            release/*.zip
+            release/*.blockmap
+            release/latest-mac.yml
+  publish:
+    needs: [checks, windows, macos]
+    if: >-
+      always() && inputs.publish && needs.checks.result == 'success' &&
+      needs.windows.result == 'success' &&
+      (needs.macos.result == 'success' || needs.macos.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*-release'
+          path: work/release-assets
+          merge-multiple: true
+      - name: Create release notes
+        run: node scripts/write-release-notes.mjs
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "v$RELEASE_VERSION" work/release-assets/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --title "DailyCheck $RELEASE_VERSION ($RELEASE_MODE)" --notes-file work/release-notes.md
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main

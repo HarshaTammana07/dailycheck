@@ -1,0 +1,15 @@
+project_id = "dailycheck"
+
+# The dashboard exposes a legacy-secret gateway check. Each handler verifies
+# the Bearer token through Supabase Auth getUser(token) and requires verified email.
+[functions.register-device]
+verify_jwt = false
+
+[functions.list-devices]
+verify_jwt = false
+
+[functions.revoke-device]
+verify_jwt = false
+
+[functions.validate-device]
+verify_jwt = false

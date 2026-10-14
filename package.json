@@ -1,0 +1,144 @@
+{
+  "name": "dailycheck",
+  "version": "1.0.0",
+  "description": "DailyCheck is a local-first Electron checklist app used to learn desktop packaging, authentication, device authorization, releases, and updates.",
+  "author": "DailyCheck",
+  "private": true,
+  "main": "dist-electron/main.js",
+  "homepage": "https://github.com/HarshaTammana07/dailycheck#readme",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on tcp:5173 && npm run build:electron && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "npm run typecheck && vite build && npm run build:electron",
+    "build:electron": "tsc -p tsconfig.electron.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "icons": "node scripts/create-icons.mjs",
+    "pack:dir": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --dir",
+    "dist:win": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --win nsis --x64",
+    "dist:mac": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --mac dmg --universal",
+    "dist:mac:arm64": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --mac dmg --arm64",
+    "dist:mac:x64": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --mac dmg --x64",
+    "release:draft": "npm run icons && npm run build && node scripts/run-electron-builder.mjs --publish=never",
+    "website:check": "node scripts/check-website-links.mjs",
+    "test:edge": "node --test scripts/test-edge-functions.mjs",
+    "test:release": "node --test scripts/test-release-assets.mjs",
+    "website:build": "node scripts/build-download-site.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.117.3",
+    "dexie": "^4.4.6",
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.9",
+    "lucide-react": "^0.545.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^24.8.1",
+    "@types/react": "^19.2.2",
+    "@types/react-dom": "^19.2.2",
+    "@vitejs/plugin-react": "^6.1.2",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^44.7.2",
+    "electron-builder": "^26.15.3",
+    "happy-dom": "^20.0.5",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^4.0.0",
+    "wait-on": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.dailycheck.app",
+    "productName": "DailyCheck",
+    "copyright": "Copyright © 2026 DailyCheck",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**",
+      "dist-electron/**",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "dist-electron/main.js",
+      "dailycheckReleaseMode": "development"
+    },
+    "asar": true,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "protocols": [
+      {
+        "name": "DailyCheck Auth Callback",
+        "schemes": [
+          "dailycheck"
+        ]
+      }
+    ],
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "HarshaTammana07",
+        "repo": "dailycheck",
+        "releaseType": "release"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "icon": "build/icon.icns"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "DailyCheck"
+    }
+  },
+  "repository": {
+    "url": "https://github.com/HarshaTammana07/dailycheck.git",
+    "type": "git"
+  }
+}
