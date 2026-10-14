@@ -18,6 +18,7 @@ export default function DayChecklist({
   onChanged: () => void;
 }) {
   const items = getChecklistItemsForDate(tasks, completions, dateKey);
+  const completedCount = items.filter(item => item.completion?.completed).length;
 
   async function toggle(task: TaskRecord, completed: boolean) {
     await setCompletion(accountId, task, dateKey, !completed);
@@ -30,21 +31,25 @@ export default function DayChecklist({
         <p className="eyebrow">Selected day</p>
         <h2>{formatShortDate(dateKey)}</h2>
       </div>
+      <div className="day-progress"><span>{completedCount} of {items.length} completed</span>
+        <div className="mini-progress"><span style={{ width: `${items.length ? completedCount / items.length * 100 : 0}%` }} /></div></div>
       <div className="checklist">
         {items.length === 0 && <p className="empty-state">No tasks are scheduled for this day.</p>}
         {items.map(({ task, completion, scheduled }) => {
           const completed = Boolean(completion?.completed);
           return (
-            <button key={task.id} type="button" className={`check-row ${completed ? 'complete' : ''}`} onClick={() => toggle(task, completed)}>
+            <button key={task.id} type="button" className={`check-row ${completed ? 'complete' : ''}`} aria-pressed={completed} onClick={() => toggle(task, completed)}>
               {completed ? <CheckCircle2 className="h-5 w-5" /> : <Circle className="h-5 w-5" />}
               <span>
                 <strong>{task.name}</strong>
-                <small>{scheduled ? 'Scheduled' : 'Historical record'}</small>
+                <small>{completed ? 'Completed' : scheduled ? 'Ready when you are' : 'Historical record'}</small>
+                {task.description && <small className="task-description">{task.description}</small>}
               </span>
             </button>
           );
         })}
       </div>
+      {items.length > 0 && completedCount === items.length && <div className="day-celebration"><CheckCircle2 size={24} /><strong>All done for this day.</strong><p>A small win worth keeping.</p></div>}
     </div>
   );
 }

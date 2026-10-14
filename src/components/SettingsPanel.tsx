@@ -4,6 +4,20 @@ import { Download, HardDriveDownload, RefreshCw, Upload, X } from 'lucide-react'
 import type { ExportPayload, RegisteredDevice } from '../types';
 import { exportAccountData, importAccountData } from '../lib/db';
 import { listRegisteredDevices } from '../lib/deviceClient';
+import { ThemeSelector } from './ThemeProvider';
+import { updatePercent, type UpdateState } from '../lib/updateState';
+
+function updateStatus(state: UpdateState) {
+  switch (state.type) {
+    case 'checking': return 'Checking for a new version…';
+    case 'not-available': return 'You’re up to date.';
+    case 'available': return `Version ${state.info?.version ?? ''} is ready to download.`;
+    case 'download-progress': return `Downloading update: ${updatePercent(state)}%`;
+    case 'downloaded': return 'Your update is ready. Restart DailyCheck to install it.';
+    case 'error': return state.message ?? 'The update check could not finish. Try again.';
+    default: return state.message ?? 'DailyCheck checks for updates when you open it.';
+  }
+}
 
 export default function SettingsPanel({
   accountId,
@@ -18,21 +32,28 @@ export default function SettingsPanel({
 }) {
   const [version, setVersion] = useState('development');
   const [devices, setDevices] = useState<RegisteredDevice[]>([]);
-  const [updateMessage, setUpdateMessage] = useState('Updates are checked automatically in packaged builds.');
+  const [updateState, setUpdateState] = useState<UpdateState>({ type: 'idle' });
+  const [actionError, setActionError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    void window.dailycheck?.getAppVersion().then(setVersion);
+    void window.dailycheck?.getAppVersion().then(setVersion).catch(() => {});
     void listRegisteredDevices().then(setDevices).catch(() => setDevices([]));
-    return window.dailycheck?.updates.onEvent((payload) => {
-      const event = payload as { type?: string; message?: string; progress?: { percent?: number } };
-      if (event.type === 'download-progress') {
-        setUpdateMessage(`Downloading update: ${Math.round(event.progress?.percent ?? 0)}%`);
-      } else if (event.type) {
-        setUpdateMessage(event.message ?? `Update status: ${event.type}`);
-      }
-    });
+    let receivedEvent = false;
+    let mounted = true;
+    const apply = (payload: unknown) => {
+      if (mounted && payload && typeof payload === 'object') setUpdateState(payload as UpdateState);
+    };
+    const unsubscribe = window.dailycheck?.updates.onEvent(payload => { receivedEvent = true; apply(payload); });
+    void window.dailycheck?.updates.getState().then(payload => { if (!receivedEvent) apply(payload); }).catch(() => {});
+    return () => { mounted = false; unsubscribe?.(); };
   }, []);
+
+  async function updateAction(action: 'check' | 'download' | 'quitAndInstall') {
+    setActionError('');
+    try { await window.dailycheck?.updates[action](); }
+    catch (error) { setActionError(error instanceof Error ? error.message : 'The update could not finish. Try again.'); }
+  }
 
   async function exportJson() {
     const payload = await exportAccountData(accountId);
@@ -64,10 +85,11 @@ export default function SettingsPanel({
           </button>
         </header>
         <div className="settings-grid">
+          <section className="appearance-section"><h3>Appearance</h3><p className="muted">Choose your look, or follow your computer’s theme.</p><ThemeSelector /></section>
           <section>
             <h3>Account</h3>
             <p>{session.user.email}</p>
-            <p className="muted">Local task data is scoped by this Supabase user ID.</p>
+            <p className="muted">Your tasks and history are saved on this computer for your account.</p>
           </section>
           <section>
             <h3>Data</h3>
@@ -94,16 +116,17 @@ export default function SettingsPanel({
           </section>
           <section>
             <h3>Updates</h3>
-            <p>{updateMessage}</p>
+            <p aria-live="polite">{actionError || updateStatus(updateState)}</p>
             <div className="button-row">
-              <button type="button" className="secondary-button" onClick={() => window.dailycheck?.updates.check()}>
+              <button type="button" className="secondary-button" disabled={['checking', 'download-progress', 'downloaded'].includes(updateState.type)} onClick={() => void updateAction('check')}>
                 <RefreshCw className="h-4 w-4" />
-                Check
+                Check for updates
               </button>
-              <button type="button" className="secondary-button" onClick={() => window.dailycheck?.updates.download()}>
+              {updateState.type === 'available' && <button type="button" className="secondary-button" onClick={() => void updateAction('download')}>
                 <HardDriveDownload className="h-4 w-4" />
                 Download
-              </button>
+              </button>}
+              {updateState.type === 'downloaded' && <button type="button" className="primary-button" onClick={() => void updateAction('quitAndInstall')}>Restart and Install</button>}
             </div>
           </section>
           <section>

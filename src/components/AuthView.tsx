@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { KeyRound, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { ThemeToggle } from './ThemeProvider';
 
 type Mode = 'login' | 'signup' | 'forgot';
 
@@ -45,6 +46,7 @@ export default function AuthView() {
 
   return (
     <main className="auth-screen">
+      <ThemeToggle floating />
       <section className="auth-panel">
         <div className="brand-lockup">
           <span className="brand-mark">

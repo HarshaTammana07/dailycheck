@@ -56,28 +56,43 @@ export default function TaskSidebar({ accountId, tasks, onChanged }: { accountId
 
   return (
     <div className="sidebar-inner">
-      <div>
-        <p className="eyebrow">Tasks</p>
-        <h2>{active.length} active</h2>
+      <div className="section-heading"><h2>Your tasks</h2><span className="count-badge">{active.length}</span></div>
+      <div className="task-list">
+        {active.length === 0 && <p className="empty-state">Start with one small thing. Add your first task below.</p>}
+        {active.map((task) => (
+          <article key={task.id} className="task-row">
+            <div className="task-info"><strong>{task.name}</strong>
+              <span>{task.recurrence.weekdays.length === 7 ? 'Every day' : task.recurrence.weekdays.map((day) => WEEKDAYS[day].label).join(', ')}</span></div>
+            <div className="row-actions">
+              <button type="button" className="icon-button" aria-label={`Edit ${task.name}`} title="Edit task" onClick={() => beginEdit(task)}><Pencil size={14} /></button>
+              <button type="button" className="icon-button" aria-label={`Archive ${task.name}`} title="Archive task" onClick={() => handleArchive(task)}><Archive size={14} /></button>
+              <button type="button" className="icon-button danger" aria-label={`Delete ${task.name}`} title="Delete task" onClick={() => handleDelete(task)}><Trash2 size={14} /></button>
+            </div>
+          </article>
+        ))}
       </div>
       <form className="task-form" onSubmit={submit}>
+        <p className="eyebrow">{editing ? 'Edit task' : 'Build your routine'}</p>
         <label>
-          Name
+          Task name
           <input value={name} onChange={(event) => setName(event.target.value)} placeholder="Hydrate, read, stretch..." />
         </label>
         <label>
-          Notes
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} />
+          Notes (optional)
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={2} placeholder="A little reminder for yourself" />
         </label>
+        <span className="field-label">Repeat on</span>
         <div className="weekday-pills" aria-label="Recurring weekdays">
           {WEEKDAYS.map((weekday) => (
             <button
               key={weekday.value}
               type="button"
               className={weekdays.includes(weekday.value) ? 'active' : ''}
+              aria-label={['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][weekday.value]}
+              aria-pressed={weekdays.includes(weekday.value)}
               onClick={() => toggleWeekday(weekday.value)}
             >
-              {weekday.label}
+              {weekday.label.slice(0, 2)}
             </button>
           ))}
         </div>
@@ -93,27 +108,6 @@ export default function TaskSidebar({ accountId, tasks, onChanged }: { accountId
           )}
         </div>
       </form>
-      <div className="task-list">
-        {active.map((task) => (
-          <article key={task.id} className="task-row">
-            <div>
-              <strong>{task.name}</strong>
-              <span>{task.recurrence.weekdays.length === 7 ? 'Daily' : task.recurrence.weekdays.map((day) => WEEKDAYS[day].label).join(', ')}</span>
-            </div>
-            <div className="row-actions">
-              <button type="button" className="icon-button" aria-label="Edit task" onClick={() => beginEdit(task)}>
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button type="button" className="icon-button" aria-label="Archive task" onClick={() => handleArchive(task)}>
-                <Archive className="h-4 w-4" />
-              </button>
-              <button type="button" className="icon-button danger" aria-label="Delete task" onClick={() => handleDelete(task)}>
-                <Trash2 className="h-4 w-4" />
-              </button>
-            </div>
-          </article>
-        ))}
-      </div>
       {archived.length > 0 && (
         <details className="archive-list">
           <summary>{archived.length} archived</summary>

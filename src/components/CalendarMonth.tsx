@@ -32,13 +32,16 @@ export default function CalendarMonth({
   return (
     <section className="calendar-section">
       <div className="calendar-header">
+        <div><p className="eyebrow">Month at a glance</p><h2>{formatMonth(monthKey)}</h2></div>
+        <div className="calendar-nav">
+        <button className="secondary-button today-button" type="button" onClick={() => onSelectDate(toDateKey(new Date()))}>Today</button>
         <button className="icon-button" type="button" aria-label="Previous month" onClick={() => onMonthChange(shiftMonth(monthKey, -1))}>
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <h2>{formatMonth(monthKey)}</h2>
         <button className="icon-button" type="button" aria-label="Next month" onClick={() => onMonthChange(shiftMonth(monthKey, 1))}>
           <ChevronRight className="h-5 w-5" />
         </button>
+        </div>
       </div>
       <div className="calendar-grid weekday-grid">
         {weekdayLabels.map((weekday) => (
@@ -58,11 +61,13 @@ export default function CalendarMonth({
               key={dateKey}
               type="button"
               className={`day-cell ${selected ? 'selected' : ''} ${today ? 'today' : ''} ${stale ? 'past' : ''}`}
+              aria-label={`${date.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}, ${progress.completed} of ${progress.total} tasks completed`}
+              aria-pressed={selected}
               onClick={() => onSelectDate(dateKey)}
             >
               <span className="day-number">{date.getDate()}</span>
-              <span className="progress-ring" style={{ ['--progress' as string]: `${progress.percent}%` }} />
-              <span className="day-meta">{progress.total ? `${progress.completed}/${progress.total}` : 'No tasks'}</span>
+              {progress.total > 0 && <span className="progress-ring" aria-hidden="true" style={{ ['--progress' as string]: `${progress.percent}%` }} />}
+              <span className={`day-meta ${progress.total > 0 && progress.percent === 100 ? 'all-done' : ''}`}>{progress.total ? `${progress.completed} / ${progress.total} done` : '—'}</span>
             </button>
           );
         })}

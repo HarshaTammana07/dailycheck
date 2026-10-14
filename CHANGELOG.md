@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.2
+
+- Redesigned dashboard with compact calendar cells, clearer monthly progress, and a dedicated daily checklist.
+- Light, Dark, and System appearance options, remembered on this computer.
+- Quick theme switch on the dashboard and login screen.
+- Readable weekday controls, a Today shortcut, and layouts that adapt to smaller windows.
+- Clearer update status and download/install actions in Settings.
+- Existing local tasks, completion history, account data, and device registration use the same storage locations.
+
 ## 1.0.1
 
 - Maintenance release for the first 1.0.0 to 1.0.1 update experiment.
