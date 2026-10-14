@@ -1,6 +1,6 @@
 {
   "name": "dailycheck",
-  "version": "1.0.2",
+  "version": "1.1.0-beta.1",
   "description": "DailyCheck is a local-first Electron checklist app used to learn desktop packaging, authentication, device authorization, releases, and updates.",
   "author": "DailyCheck",
   "private": true,
@@ -24,7 +24,10 @@
     "website:check": "node scripts/check-website-links.mjs",
     "test:edge": "node --test scripts/test-edge-functions.mjs",
     "test:release": "node --test scripts/test-release-assets.mjs scripts/test-release-environment.mjs",
-    "website:build": "node scripts/build-download-site.mjs"
+    "website:build": "node scripts/build-download-site.mjs",
+    "test:cloud": "node --test scripts/test-cloud-database.mjs",
+    "test:mcp": "node scripts/test-mcp.mjs",
+    "build:consent": "vite build --config vite.consent.config.mts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.3",
@@ -36,6 +39,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.10",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24.8.1",
     "@types/react": "^19.2.2",
@@ -43,8 +47,10 @@
     "@vitejs/plugin-react": "^6.1.2",
     "concurrently": "^9.2.1",
     "cross-env": "^10.1.0",
+    "deno": "^2.9.6",
     "electron": "^44.7.2",
     "electron-builder": "^26.15.3",
+    "fake-indexeddb": "^6.2.5",
     "happy-dom": "^20.0.5",
     "typescript": "^5.9.3",
     "vite": "^8.3.4",

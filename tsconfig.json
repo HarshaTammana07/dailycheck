@@ -17,6 +17,6 @@
     "jsx": "react-jsx",
     "types": ["vitest/globals"]
   },
-  "include": ["src", "vite.config.mts"],
+  "include": ["src", "website/authorize/**/*.ts", "vite.config.mts", "vite.consent.config.mts"],
   "references": []
 }

@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self' https://*.supabase.co; img-src 'self' data:; base-uri 'none'; form-action 'self';">
+<meta name="referrer" content="no-referrer"><title>Connect DailyCheck</title><link rel="stylesheet" href="./consent.css"></head>
+<body><main class="panel"><div class="brand">✓ DailyCheck</div><h1>Connect your account</h1>
+<p id="status" role="status">Checking your connection…</p>
+<p id="error" class="notice" role="alert" hidden></p>
+<form id="login" hidden><label>Email<input id="email" type="email" autocomplete="email" required></label>
+<label>Password<input id="password" type="password" autocomplete="current-password" required></label><button type="submit">Sign in to DailyCheck</button></form>
+<section id="consent" hidden><h2 id="client-name"></h2><p id="account"></p><p id="callback"></p><p id="scope"></p>
+<p>This integration can read your cloud tasks, notes, recurrence, and completion history. Your offline desktop changes are available only after they synchronize.</p>
+<fieldset><legend>DailyCheck permissions</legend><label class="choice"><input type="radio" name="permission" value="read" checked> Read tasks and history</label>
+<label class="choice"><input type="radio" name="permission" value="create"> Read and create tasks</label></fieldset>
+<p>You can change these permissions or disconnect the integration in DailyCheck Settings. Connecting does not give access to your passwords, files, or device secrets.</p>
+<div class="actions"><button id="deny" class="secondary" type="button">Deny</button><button id="approve" type="button">Allow access</button></div></section>
+<button id="retry" type="button" class="secondary" hidden>Try again</button>
+<button id="logout" type="button" class="secondary" hidden>Use a different account</button>
+<footer>Only approve integrations you trust. Client names are provided by the requesting application.</footer></main>
+<script type="module" src="./consent.ts"></script></body></html>

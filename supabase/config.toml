@@ -13,3 +13,8 @@ verify_jwt = false
 
 [functions.validate-device]
 verify_jwt = false
+
+# Discovery/tool schemas are public. Each data tool validates OAuth credentials,
+# then uses a user-scoped client and database grants. No service-role task access.
+[functions.dailycheck-mcp]
+verify_jwt = false
