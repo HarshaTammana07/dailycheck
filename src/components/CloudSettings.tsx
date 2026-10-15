@@ -3,7 +3,7 @@ import { liveQuery } from 'dexie';
 import { Cloud, CloudOff, RefreshCw, Unplug } from 'lucide-react';
 import { db } from '../lib/db';
 import type { OutboxOperation, SyncState } from '../lib/cloudTypes';
-import { createCloudTransport } from '../lib/cloudClient';
+import { accountRpc, createCloudTransport, revokeAccountOAuthGrant } from '../lib/cloudClient';
 import { enableLocalSync, resolveConflict, SyncEngine } from '../lib/cloudSync';
 import { supabase } from '../lib/supabase';
 
@@ -39,15 +39,12 @@ export default function CloudSettings({ accountId, onChanged }: { accountId: str
     await new SyncEngine(accountId, await createCloudTransport(accountId)).run();
   }
   async function revoke(clientId: string) {
-    const { error } = await supabase.rpc('cloud_set_grant', { p_client_id: clientId, p_can_create: false, p_revoke: true });
-    if (error) throw error;
+    await accountRpc(accountId, 'cloud_set_grant', { p_client_id: clientId, p_can_create: false, p_revoke: true });
     setGrants(current => current.filter(grant => grant.client_id !== clientId));
-    const revoked = await supabase.auth.oauth.revokeGrant({ clientId });
-    if (revoked.error) throw new Error('DailyCheck access is blocked, but OAuth token revocation could not finish. Try reconnecting only when you intend to restore access.');
+    await revokeAccountOAuthGrant(accountId, clientId);
   }
   async function changePermission(clientId: string, canCreate: boolean) {
-    const { error } = await supabase.rpc('cloud_set_grant', { p_client_id: clientId, p_can_create: canCreate, p_revoke: false });
-    if (error) throw error;
+    await accountRpc(accountId, 'cloud_set_grant', { p_client_id: clientId, p_can_create: canCreate, p_revoke: false });
     setGrants(current => current.map(grant => grant.client_id === clientId ? { ...grant, can_create: canCreate } : grant));
   }
   return <section className="cloud-section">
