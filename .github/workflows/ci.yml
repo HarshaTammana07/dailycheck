@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - 'feat/**'
 
 jobs:
   checks:
@@ -20,5 +21,8 @@ jobs:
       - run: npm test
       - run: npm run test:edge
       - run: npm run test:release
+      - run: npm run test:cloud
+      - run: npm run test:mcp
+      - run: npm run build:consent
       - run: npm run build
       - run: npm run website:check

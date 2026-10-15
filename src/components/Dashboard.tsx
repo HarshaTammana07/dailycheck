@@ -36,7 +36,7 @@ export default function Dashboard({ session, tasks, completions, visibleMonth, s
       <div className="sidebar-brand"><span className="brand-mark"><CheckCircle2 size={22} /></span>
         <div><strong>DailyCheck</strong><span>Small steps. Every day.</span></div></div>
       <TaskSidebar accountId={session.user.id} tasks={tasks} onChanged={onChanged} />
-      <div className="sidebar-footer"><span className="status-dot" /> Your tasks stay on this computer</div>
+      <div className="sidebar-footer"><span className="status-dot" /> Your routine, one day at a time</div>
     </aside>
     <section className="workspace">
       <header className="topbar">

@@ -45,5 +45,9 @@ export async function requireUser(req: Request) {
   if (!data.user.email_confirmed_at) {
     return { error: 'Verify your email before authorizing a device.', user: null };
   }
+  const { data: verifiedClaims, error: claimsError } = await client.auth.getClaims(token);
+  if (claimsError || !verifiedClaims?.claims || verifiedClaims.claims.client_id) {
+    return { error: 'Use your DailyCheck desktop session for device management.', user: null };
+  }
   return { error: null, user: data.user };
 }

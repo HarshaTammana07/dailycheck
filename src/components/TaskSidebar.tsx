@@ -11,6 +11,8 @@ export default function TaskSidebar({ accountId, tasks, onChanged }: { accountId
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [weekdays, setWeekdays] = useState<Weekday[]>(defaultWeekdays());
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
   function beginEdit(task: TaskRecord) {
     setEditing(task);
@@ -33,25 +35,29 @@ export default function TaskSidebar({ accountId, tasks, onChanged }: { accountId
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
-    await saveTask({
+    setError(''); setBusy(true);
+    try { await saveTask({
       accountId,
       id: editing?.id,
+      expectedUpdatedAt: editing?.updatedAt,
       name,
       description,
       weekdays
     });
     resetForm();
     onChanged();
+    } catch (error) { setError(error instanceof Error ? error.message : 'Could not save task.'); }
+    finally { setBusy(false); }
   }
 
   async function handleArchive(task: TaskRecord) {
-    await archiveTask(task.id);
-    onChanged();
+    try { await archiveTask(task.id, accountId); onChanged(); }
+    catch (error) { setError(error instanceof Error ? error.message : 'Could not archive task.'); }
   }
 
   async function handleDelete(task: TaskRecord) {
-    await deleteTask(task.id);
-    onChanged();
+    try { await deleteTask(task.id, accountId); onChanged(); }
+    catch (error) { setError(error instanceof Error ? error.message : 'Could not delete task.'); }
   }
 
   return (
@@ -72,6 +78,7 @@ export default function TaskSidebar({ accountId, tasks, onChanged }: { accountId
         ))}
       </div>
       <form className="task-form" onSubmit={submit}>
+        {error && <p className="notice" role="alert">{error}</p>}
         <p className="eyebrow">{editing ? 'Edit task' : 'Build your routine'}</p>
         <label>
           Task name
@@ -97,7 +104,7 @@ export default function TaskSidebar({ accountId, tasks, onChanged }: { accountId
           ))}
         </div>
         <div className="form-actions">
-          <button className="primary-button" type="submit">
+          <button className="primary-button" type="submit" disabled={busy}>
             {editing ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {editing ? 'Save' : 'Add task'}
           </button>

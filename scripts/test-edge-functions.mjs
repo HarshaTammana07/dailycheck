@@ -12,7 +12,7 @@ const auth = await readFile(resolve(root, 'supabase/functions/_shared/auth.ts'),
 const cors = await readFile(resolve(root, 'supabase/functions/_shared/cors.ts'), 'utf8');
 const verifiedUser = { id: 'verified-user', email_confirmed_at: '2026-10-14T00:00:00Z' };
 
-async function loadHandler(name, user = verifiedUser, legacy = false) {
+async function loadHandler(name, user = verifiedUser, legacy = false, oauth = false) {
   const original = await readFile(resolve(root, `supabase/functions/${name}/index.ts`), 'utf8');
   const source = auth + '\n' + cors + '\n' + original.replace(/^import .* from '\.\.\/_shared\/(?:auth|cors)\.ts';\r?\n/gm, '');
   const calls = [];
@@ -26,7 +26,7 @@ async function loadHandler(name, user = verifiedUser, legacy = false) {
     SUPABASE_SECRET_KEYS: JSON.stringify({ default: 'server-test-key' })
   };
   const client = {
-    auth: { getUser: async (token) => {
+    auth: { getClaims: async () => ({ data: { claims: { ...(oauth ? { client_id: 'oauth-client' } : {}) } }, error: null }), getUser: async (token) => {
       calls.push(['getUser', token]);
       return token === 'valid-user-token'
         ? { data: { user }, error: null }
@@ -76,6 +76,12 @@ function request(authorization, body = {}) {
 }
 
 for (const name of names) {
+  test(`${name} rejects OAuth integration tokens before device admin access`, async () => {
+    const { handler, calls } = await loadHandler(name, verifiedUser, false, true);
+    const response = await handler(request('Bearer valid-user-token'));
+    assert.equal(response.status, 401);
+    assert(!calls.some(call => call[0] === 'rpc' || call[0] === 'from'));
+  });
   test(`${name} rejects missing or invalid credentials before admin access`, async () => {
     for (const authorization of [undefined, 'public-test-key', 'Bearer invalid-token']) {
       const { handler, calls } = await loadHandler(name);

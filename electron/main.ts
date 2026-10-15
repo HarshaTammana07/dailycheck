@@ -33,6 +33,12 @@ const releaseMode = packageMetadata.dailycheckReleaseMode === 'production' ? 'pr
 autoUpdater.autoDownload = false;
 autoUpdater.autoInstallOnAppQuit = false;
 autoUpdater.disableWebInstaller = true;
+if (app.getVersion().includes('-')) {
+  // Private previews follow the stable feed and must not downgrade the local schema.
+  autoUpdater.channel = 'latest';
+  autoUpdater.allowPrerelease = false;
+  autoUpdater.allowDowngrade = false;
+}
 autoUpdater.logger = log;
 log.transports.file.level = 'info';
 

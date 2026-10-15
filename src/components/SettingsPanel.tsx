@@ -6,6 +6,7 @@ import { exportAccountData, importAccountData } from '../lib/db';
 import { listRegisteredDevices } from '../lib/deviceClient';
 import { ThemeSelector } from './ThemeProvider';
 import { updatePercent, type UpdateState } from '../lib/updateState';
+import CloudSettings from './CloudSettings';
 
 function updateStatus(state: UpdateState) {
   switch (state.type) {
@@ -67,9 +68,12 @@ export default function SettingsPanel({
   }
 
   async function importJson(file: File) {
-    const payload = JSON.parse(await file.text()) as ExportPayload;
-    await importAccountData(accountId, payload);
-    onDataImported();
+    try {
+      if (file.size > 10 * 1024 * 1024) throw new Error('Export file must be smaller than 10 MB.');
+      const payload = JSON.parse(await file.text()) as ExportPayload;
+      await importAccountData(accountId, payload);
+      onDataImported(); setActionError('');
+    } catch (error) { setActionError(error instanceof Error ? error.message : 'Could not import this file.'); }
   }
 
   return (
@@ -86,6 +90,7 @@ export default function SettingsPanel({
         </header>
         <div className="settings-grid">
           <section className="appearance-section"><h3>Appearance</h3><p className="muted">Choose your look, or follow your computer’s theme.</p><ThemeSelector /></section>
+          <CloudSettings accountId={accountId} onChanged={onDataImported} />
           <section>
             <h3>Account</h3>
             <p>{session.user.email}</p>
@@ -93,6 +98,7 @@ export default function SettingsPanel({
           </section>
           <section>
             <h3>Data</h3>
+            {actionError && <p role="alert">{actionError}</p>}
             <div className="button-row">
               <button type="button" className="secondary-button" onClick={exportJson}>
                 <Download className="h-4 w-4" />

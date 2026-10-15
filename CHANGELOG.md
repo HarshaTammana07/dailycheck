@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.0
+
+- Optional cloud synchronization for tasks, notes, and completion history, with explicit upload consent in Settings.
+- OAuth connection for ChatGPT to read task metadata, checklists, history, and monthly progress, even while DailyCheck is closed.
+- Task creation through MCP with a separate permission choice and duplicate-safe retries.
+- Durable offline queues, account isolation, revision checks, deletion tombstones, and explicit conflict resolution.
+- Controls to pause cloud access, change integration permissions, or disconnect an integration.
+- Clear monthly occurrence totals that include future scheduled dates without labeling them overdue.
+- Preserves existing local tasks and history. Cloud sync remains optional; theme and calendar preferences stay local.
+
 ## 1.0.2
 
 - Redesigned dashboard with compact calendar cells, clearer monthly progress, and a dedicated daily checklist.

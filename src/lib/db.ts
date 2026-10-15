@@ -2,14 +2,19 @@ import Dexie, { type Table } from 'dexie';
 import type { CompletionRecord, DeviceLeaseRecord, ExportPayload, PreferencesRecord, TaskRecord, Weekday } from '../types';
 import { monthKeyFromDate, todayKey } from './date';
 import { completionId, defaultWeekdays } from './recurrence';
+import { type CloudVersion, type OutboxOperation, type SyncState, type EntityKind, versionKey, withoutAccount } from './cloudTypes';
+import { normalizeImport, sameRecord } from './importData';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 class DailyCheckDatabase extends Dexie {
   tasks!: Table<TaskRecord, string>;
   completions!: Table<CompletionRecord, string>;
   preferences!: Table<PreferencesRecord, string>;
   deviceLeases!: Table<DeviceLeaseRecord, string>;
+  syncStates!: Table<SyncState, string>;
+  outbox!: Table<OutboxOperation, number>;
+  cloudVersions!: Table<CloudVersion, string>;
 
   constructor() {
     super('dailycheck');
@@ -24,11 +29,27 @@ class DailyCheckDatabase extends Dexie {
       preferences: 'accountId',
       deviceLeases: '&userId, authorizedUntil'
     });
+    this.version(3).stores({
+      tasks: 'id, accountId, archivedAt, createdAt',
+      completions: 'id, accountId, taskId, date, [accountId+date], [accountId+taskId+date]',
+      preferences: 'accountId',
+      deviceLeases: '&userId, authorizedUntil',
+      syncStates: 'accountId',
+      outbox: '++sequence, &operationId, accountId, [accountId+kind+entityId]',
+      cloudVersions: '&key, accountId'
+    });
   }
 }
 
 export const db = new DailyCheckDatabase();
 export const schemaVersion = SCHEMA_VERSION;
+
+export async function enqueueChange(accountId: string, kind: EntityKind, record: TaskRecord | CompletionRecord, deleted = false) {
+  if (!(await db.syncStates.get(accountId))) return;
+  const version = await db.cloudVersions.get(versionKey(accountId, kind, record.id));
+  await db.outbox.add({ operationId: crypto.randomUUID(), accountId, kind, entityId: record.id,
+    payload: withoutAccount(record), deleted, expectedRevision: version?.revision ?? 0, status: 'pending' });
+}
 
 export async function listTasks(accountId: string) {
   return db.tasks.where('accountId').equals(accountId).sortBy('createdAt');
@@ -45,9 +66,15 @@ export async function saveTask(input: {
   name: string;
   description?: string;
   weekdays: Weekday[];
+  expectedUpdatedAt?: string;
 }) {
   const now = new Date().toISOString();
+  if (!input.name.trim() || input.name.trim().length > 200 || (input.description?.length ?? 0) > 4000
+    || input.weekdays.some(day => !Number.isInteger(day) || day < 0 || day > 6)) throw new Error('Invalid task fields.');
   const existing = input.id ? await db.tasks.get(input.id) : undefined;
+  if (input.id && input.expectedUpdatedAt && !existing) throw new Error('This task was deleted while you were editing it.');
+  if (existing && existing.accountId !== input.accountId) throw new Error('Task belongs to another account.');
+  if (existing && input.expectedUpdatedAt && existing.updatedAt !== input.expectedUpdatedAt) throw new Error('This task changed while you were editing it. Open Edit again to review the latest version.');
   const task: TaskRecord = {
     id: input.id ?? crypto.randomUUID(),
     accountId: input.accountId,
@@ -61,20 +88,34 @@ export async function saveTask(input: {
       weekdays: input.weekdays.length ? input.weekdays : defaultWeekdays()
     }
   };
-  await db.tasks.put(task);
+  await db.transaction('rw', db.tasks, db.syncStates, db.outbox, db.cloudVersions, async () => {
+    const latest = await db.tasks.get(task.id);
+    if ((latest?.updatedAt ?? null) !== (existing?.updatedAt ?? null)) throw new Error('This task changed while you were editing it. Try again.');
+    await db.tasks.put(task);
+    await enqueueChange(input.accountId, 'task', task);
+  });
   return task;
 }
 
-export async function archiveTask(id: string) {
-  const task = await db.tasks.get(id);
-  if (!task) return;
-  await db.tasks.put({ ...task, archivedAt: todayKey(), updatedAt: new Date().toISOString() });
+export async function archiveTask(id: string, accountId: string) {
+  await db.transaction('rw', db.tasks, db.syncStates, db.outbox, db.cloudVersions, async () => {
+    const task = await db.tasks.get(id);
+    if (!task) return;
+    if (task.accountId !== accountId) throw new Error('Task belongs to another account.');
+    const next = { ...task, archivedAt: todayKey(), updatedAt: new Date().toISOString() };
+    await db.tasks.put(next);
+    await enqueueChange(task.accountId, 'task', next);
+  });
 }
 
-export async function deleteTask(id: string) {
-  await db.transaction('rw', db.tasks, db.completions, async () => {
+export async function deleteTask(id: string, accountId: string) {
+  await db.transaction('rw', db.tasks, db.completions, db.syncStates, db.outbox, db.cloudVersions, async () => {
+    const task = await db.tasks.get(id);
+    if (!task) return;
+    if (task.accountId !== accountId) throw new Error('Task belongs to another account.');
+    await enqueueChange(task.accountId, 'task', task, true);
     await db.tasks.delete(id);
-    await db.completions.where('taskId').equals(id).delete();
+    await db.completions.where('[accountId+taskId+date]').between([accountId, id, ''], [accountId, id, '\uffff']).delete();
   });
 }
 
@@ -89,6 +130,7 @@ export async function listCompletionsForMonth(accountId: string, monthKey: strin
 }
 
 export async function setCompletion(accountId: string, task: TaskRecord, dateKey: string, completed: boolean) {
+  if (task.accountId !== accountId) throw new Error('Task belongs to another account.');
   const now = new Date().toISOString();
   const record: CompletionRecord = {
     id: completionId(accountId, task.id, dateKey),
@@ -100,7 +142,10 @@ export async function setCompletion(accountId: string, task: TaskRecord, dateKey
     completedAt: completed ? now : undefined,
     updatedAt: now
   };
-  await db.completions.put(record);
+  await db.transaction('rw', db.completions, db.syncStates, db.outbox, db.cloudVersions, async () => {
+    await db.completions.put(record);
+    await enqueueChange(accountId, 'completion', record);
+  });
   return record;
 }
 
@@ -146,14 +191,16 @@ export async function exportAccountData(accountId: string): Promise<ExportPayloa
 }
 
 export async function importAccountData(accountId: string, payload: ExportPayload) {
-  if (!Array.isArray(payload.tasks) || !Array.isArray(payload.completions)) {
-    throw new Error('Invalid DailyCheck export file.');
-  }
-  await db.transaction('rw', db.tasks, db.completions, db.preferences, async () => {
-    await db.tasks.bulkPut(payload.tasks.map((task) => ({ ...task, accountId })));
-    await db.completions.bulkPut(payload.completions.map((completion) => ({ ...completion, accountId })));
-    if (payload.preferences) {
-      await db.preferences.put({ ...payload.preferences, accountId });
+  const normalized = await normalizeImport(accountId, payload);
+  await db.transaction('rw', [db.tasks, db.completions, db.preferences, db.syncStates, db.outbox, db.cloudVersions], async () => {
+    for (const task of normalized.tasks) {
+      const existing = await db.tasks.get(task.id);
+      if (existing && existing.accountId !== accountId) throw new Error('Task ID collision with another account.');
+      if (!sameRecord(existing, task)) { await db.tasks.put(task); await enqueueChange(accountId, 'task', task); }
     }
+    for (const row of normalized.completions) if (!sameRecord(await db.completions.get(row.id), row)) {
+      await db.completions.put(row); await enqueueChange(accountId, 'completion', row);
+    }
+    if (normalized.preferences) await db.preferences.put(normalized.preferences);
   });
 }
