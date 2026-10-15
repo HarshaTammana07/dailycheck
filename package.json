@@ -1,6 +1,6 @@
 {
   "name": "dailycheck",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "DailyCheck is a local-first Electron checklist app used to learn desktop packaging, authentication, device authorization, releases, and updates.",
   "author": "DailyCheck",
   "private": true,

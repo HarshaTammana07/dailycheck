@@ -22,12 +22,25 @@ The MCP endpoint is `https://xjblgkuwrpgvgwkkamus.supabase.co/functions/v1/daily
 | `list_tasks` | Paginated tasks, notes, recurrence and metadata; optional archived tasks |
 | `get_task` | Exact task plus optional paginated completion history in a date interval |
 | `get_day_checklist` | Scheduled checklist and completion state for an explicit date |
+| `show_task_dashboard` | Predefined read-only MCP App table for an optional date (defaults to today in the account timezone); date selection and Refresh |
 | `get_month_summary` | Full-month occurrence totals using the desktop's recurrence rules; future dates are included and remaining occurrences are not called overdue |
 | `create_task` | Creates a daily/weekday task with an explicit start date and durable idempotency key |
 
 Discovery is public; tool data requires a verified Supabase OAuth token and a matching account grant. The consent page defaults to read-only access. Creating tasks requires an explicit permission selection or a later change in DailyCheck Settings. Supabase currently supports identity scopes rather than custom task scopes, so the database enforces application permissions independently. OAuth tokens cannot manage devices, grant themselves access, or use desktop synchronization RPCs. MCP does not use a service-role key.
 
 The first version intentionally has no integration tools for editing/deleting tasks, marking completions, or setting timed reminders. Task notes are returned as untrusted user data, never executable instructions. Disconnecting blocks the application grant first, then revokes the OAuth grant. If OAuth revocation fails, application access is still blocked and the UI explains the remaining token-revocation failure.
+
+## Task table UI (1.2.0)
+
+The existing MCP endpoint also registers `ui://dailycheck/tasks-v1.html`, a public static HTML resource with MIME type `text/html;profile=mcp-app`. Only `show_task_dashboard` declares `_meta.ui.resourceUri`. The other tools remain data tools. The component uses the standard MCP Apps JSON-RPC bridge (`ui/initialize`, `ui/notifications/tool-result`, and `tools/call`); no external UI service or frontend credentials are used. It includes no external scripts or network requests and declares empty CSP domain allowlists.
+
+The dashboard tool is OAuth protected like the existing reads. It queries the linked account using the same snapshot pagination, size limits, and shared recurrence rules as the day checklist. Task status applies to the selected day, not permanently to a recurring task. A missing historical completion timestamp is displayed as a dash rather than invented. Deleted tasks with retained historical completions use their name snapshot. Time formatting uses the account timezone. The UI clears displayed rows when a refresh fails, so stale data is not presented as a successful refresh.
+
+The component provides a date picker and Refresh, not write controls or background live updates. Offline desktop changes are unavailable until that desktop synchronizes. The same HTML/CSS is used for every account; the host controls the surrounding conversation, available width, and whether UI is supported. Tools remain usable without an iframe. This is a personal learning integration, not a reviewed public-directory UI submission; public distribution would additionally require the current submission requirements, including a dedicated component origin.
+
+Deploy only the regenerated `dailycheck-mcp` Edge Function for this feature; keep legacy JWT verification off because the handler validates OAuth. No SQL migration, device-function change, or new consent permission is required. Refresh the existing ChatGPT plugin's tools after deployment, then ask: “Show my DailyCheck task dashboard.” Check real records, another date, empty state, Refresh, and light/dark appearance. A desktop release is optional for enabling this server-only feature; desktop 1.1.0 remains compatible.
+
+Generate a self-contained Dashboard Editor file using `node scripts/prepare-cloud-dashboard.mjs work/mcp-ui-setup`. The generated `dailycheck-mcp.ts` includes the UI resource; copying only server.ts would omit dependencies. Deploy the function separately from publishing a GitHub desktop release.
 
 ## Deployment order
 
