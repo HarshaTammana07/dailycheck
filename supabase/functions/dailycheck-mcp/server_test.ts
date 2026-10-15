@@ -52,7 +52,7 @@ Deno.test('anonymous initialization and tool discovery expose schemas, never acc
   const init = await parse(await handler(request('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'test', version: '1' } }, '')));
   assert(init.result.serverInfo.name === 'dailycheck');
   const response = await parse(await handler(request('tools/list', {}, '')));
-  assert(response.result.tools.length === 6);
+  assert(response.result.tools.length === 7);
   for (const tool of response.result.tools) {
     assert(tool.securitySchemes?.[0]?.type === 'oauth2');
     assert(tool._meta.securitySchemes[0].type === 'oauth2');
@@ -99,4 +99,69 @@ Deno.test('metadata-only task retrieval does not read unbounded history', async 
   const { handler, calls } = fixture();
   await parse(await handler(request('tools/call', { name: 'get_task', arguments: { task_id: '00000000-0000-4000-8000-000000000005' } })));
   assert(calls.length === 1 && calls[0].args.p_kind === 'task');
+});
+
+Deno.test('dashboard resource and metadata are public static UI, without account access', async () => {
+  const { handler, calls } = fixture();
+  const listed = await parse(await handler(request('tools/list', {}, '')));
+  const dashboard = listed.result.tools.find((tool: any) => tool.name === 'show_task_dashboard');
+  assert(dashboard._meta.ui.resourceUri === 'ui://dailycheck/tasks-v1.html');
+  assert(dashboard._meta.ui.visibility.includes('app'));
+  assert(listed.result.tools.filter((tool: any) => tool._meta.ui).length === 1);
+  const resources = await parse(await handler(request('resources/list', {}, '')));
+  assert(resources.result.resources.length === 1);
+  const result = await parse(await handler(request('resources/read', { uri: dashboard._meta.ui.resourceUri }, '')));
+  const component = result.result.contents[0];
+  assert(component.mimeType === 'text/html;profile=mcp-app');
+  assert(component.text.includes('ui/initialize') && component.text.includes('ui/notifications/tool-result'));
+  assert(!component.text.includes('owner@example.com') && !component.text.includes('SUPABASE_ANON_KEY'));
+  assert(component._meta.ui.csp.connectDomains.length === 0);
+  assert(calls.length === 0);
+});
+
+Deno.test('dashboard calls enforce OAuth and reject invalid dates or owner overrides', async () => {
+  for (const token of ['', 'invalid']) {
+    const { handler, calls } = fixture();
+    const result = await parse(await handler(request('tools/call', { name: 'show_task_dashboard', arguments: {} }, token)));
+    assert(result.result.isError && result.result._meta['mcp/www_authenticate']);
+    assert(calls.length === 0);
+  }
+  for (const args of [{ date: '2026-02-30' }, { accountId: 'other' }]) {
+    const { handler, calls } = fixture();
+    const result = await parse(await handler(request('tools/call', { name: 'show_task_dashboard', arguments: args })));
+    assert(result.error || result.result?.isError);
+    assert(calls.length === 0);
+  }
+});
+
+Deno.test('dashboard uses daily recurrence and real completion times, including historical deleted tasks', async () => {
+  const calls: Record<string, unknown>[] = [];
+  const task = (id: string, name: string, weekdays = [0,1,2,3,4,5,6]) => ({ payload: {
+    id, name, createdAt: '2026-10-01', recurrence: { frequency: 'daily', weekdays }
+  } });
+  const handler = createDailyCheckHandler(async () => ({ user: { id: 'owner' }, timezone: 'America/Chicago', revision: 9,
+    rpc: async <T>(_name: string, args: Record<string, unknown>) => {
+      calls.push(args);
+      return { items: args.p_kind === 'task' ? [task('a','Read'),task('b','Exercise'),task('c','Sunday only',[0])]
+        : [{ payload: { taskId: 'a', date: '2026-10-14', completed: true, completedAt: '2026-10-14T18:30:00Z' } },
+          { payload: { taskId: 'deleted', taskNameSnapshot: 'Deleted task', date: '2026-10-14', completed: true } }], nextCursor: null } as T;
+    } }), resource);
+  const result = await parse(await handler(request('tools/call', { name: 'show_task_dashboard', arguments: { date: '2026-10-14' } })));
+  const data = result.result.structuredContent;
+  assert(!result.result.isError && data.rows.length === 3);
+  assert(data.date === '2026-10-14' && data.timezone === 'America/Chicago');
+  assert(data.rows.find((row: any) => row.id === 'a').completedAt === '2026-10-14T18:30:00Z');
+  assert(data.rows.find((row: any) => row.id === 'b').status === 'pending');
+  assert(data.rows.find((row: any) => row.id === 'deleted').completedAt === null);
+  assert(calls.every(args => args.p_snapshot === 9));
+  assert(calls.find(args => args.p_kind === 'completion')?.p_from_date === '2026-10-14');
+});
+
+Deno.test('dashboard default date matches the linked account timezone and never writes', async () => {
+  const { handler, calls } = fixture();
+  const result = await parse(await handler(request('tools/call', { name: 'show_task_dashboard', arguments: {} })));
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', year:'numeric',month:'2-digit',day:'2-digit' }).formatToParts(new Date());
+  const part = (type: string) => parts.find(value => value.type === type)!.value;
+  assert(result.result.structuredContent.date === `${part('year')}-${part('month')}-${part('day')}`);
+  assert(calls.length === 2 && calls.every(call => call.name === 'cloud_list'));
 });

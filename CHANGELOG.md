@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- A predefined read-only task table inside ChatGPT through the existing DailyCheck MCP connection.
+- Daily status and actual completion times in the account timezone, with date selection and Refresh.
+- A self-contained MCP App component with light/dark appearance, empty/error states, and safe text rendering.
+- Existing cloud authentication, integration permissions, task storage, and desktop data remain compatible. No database migration is required.
+
 ## 1.1.0
 
 - Optional cloud synchronization for tasks, notes, and completion history, with explicit upload consent in Settings.
