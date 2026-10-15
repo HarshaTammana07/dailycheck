@@ -1,5 +1,22 @@
 import { AuthorizationError, createDailyCheckHandler, type Context } from './server.ts';
 
+Deno.test('month totals distinguish future occurrences from missed or overdue tasks', async () => {
+  const id = '00000000-0000-4000-8000-000000000009';
+  const handler = createDailyCheckHandler(async () => ({ user: { id: 'owner' }, timezone: 'UTC', revision: 2,
+    rpc: async <T>(_name: string, args: Record<string, unknown>) => ({ items: args.p_kind === 'task'
+      ? [{ id, payload: { id, name: 'Read', createdAt: '2026-10-14', recurrence: { frequency: 'daily', weekdays: [0, 1, 2, 3, 4, 5, 6] } } }]
+      : [{ payload: { id: `owner:${id}:2026-10-14`, taskId: id, date: '2026-10-14', taskNameSnapshot: 'Read', completed: true } }],
+      snapshot: 2, nextCursor: null }) as T }), resource);
+  const response = await parse(await handler(request('tools/call', { name: 'get_month_summary', arguments: { month: '2026-10' } })));
+  const result = response.result.structuredContent;
+  assert(result.totals.scheduledOccurrences === 18);
+  assert(result.totals.completedOccurrences === 1);
+  assert(result.totals.remainingOccurrences === 17);
+  assert(result.scheduleBasis === 'full_calendar_month');
+  assert(result.remainingMeaning.includes('not an overdue count'));
+  assert(!('missedTasks' in result));
+});
+
 function assert(condition: unknown, message = 'Assertion failed'): asserts condition { if (!condition) throw new Error(message); }
 const resource = 'https://test.supabase.co/functions/v1/dailycheck-mcp';
 function request(method: string, params: unknown, token = 'valid') {

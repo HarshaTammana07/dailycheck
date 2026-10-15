@@ -44,6 +44,8 @@ jobs:
       - run: npm test
       - run: npm run test:edge
       - run: npm run test:release
+      - run: npm run test:cloud
+      - run: npm run test:mcp
       - run: npm run website:check
   windows:
     needs: checks

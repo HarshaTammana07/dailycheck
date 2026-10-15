@@ -22,7 +22,7 @@ The MCP endpoint is `https://xjblgkuwrpgvgwkkamus.supabase.co/functions/v1/daily
 | `list_tasks` | Paginated tasks, notes, recurrence and metadata; optional archived tasks |
 | `get_task` | Exact task plus optional paginated completion history in a date interval |
 | `get_day_checklist` | Scheduled checklist and completion state for an explicit date |
-| `get_month_summary` | Monthly progress using the desktop's recurrence rules |
+| `get_month_summary` | Full-month occurrence totals using the desktop's recurrence rules; future dates are included and remaining occurrences are not called overdue |
 | `create_task` | Creates a daily/weekday task with an explicit start date and durable idempotency key |
 
 Discovery is public; tool data requires a verified Supabase OAuth token and a matching account grant. The consent page defaults to read-only access. Creating tasks requires an explicit permission selection or a later change in DailyCheck Settings. Supabase currently supports identity scopes rather than custom task scopes, so the database enforces application permissions independently. OAuth tokens cannot manage devices, grant themselves access, or use desktop synchronization RPCs. MCP does not use a service-role key.
