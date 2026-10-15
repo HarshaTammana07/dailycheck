@@ -52,9 +52,9 @@ Supabase injects `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEYS`, and `SUPABASE_SECR
 
 Start with `docs/DEPLOYMENT_GUIDE.md` and `docs/GITHUB_SETUP.md`, then read the focused lifecycle documents in `docs/`.
 
-## Cloud and MCP preview
+## Cloud sync and ChatGPT
 
-The `feat/cloud-mcp` branch adds optional cloud task synchronization and an OAuth-protected MCP server. The public stable download remains 1.0.2. Deployment and a real OAuth connection must be verified before publishing this feature as a stable release. See [cloud deployment and acceptance checks](docs/CLOUD_MCP.md).
+Version 1.1.0 adds optional cloud task synchronization and an OAuth-protected MCP server. Users opt in before existing tasks and history are uploaded. Connected integrations default to read-only access; creating tasks requires an additional permission choice. See [cloud deployment and acceptance checks](docs/CLOUD_MCP.md).
 
 Run `npm run test:cloud`, `npm run test:mcp`, and `npm run build:consent` in addition to the existing checks. No private Supabase key belongs in the renderer, website, or repository.
 

@@ -1,6 +1,6 @@
-# Cloud sync and ChatGPT integration preview
+# Cloud sync and ChatGPT integration
 
-Status: implemented on `feat/cloud-mcp` as `1.1.0-beta.1`. The stable public download remains 1.0.2. A live Supabase deployment, OAuth connection, and installed-desktop acceptance test are required before promoting this feature to a stable release.
+Introduced in version 1.1.0. The hosted endpoint and consent page have been deployed and tested with a real OAuth connection. The installed preview retained existing data, synchronized tasks, and received a task created while the desktop was closed. Use the acceptance checks below when deploying another project or changing this integration.
 
 ## Behavior and data
 
@@ -89,9 +89,9 @@ Live checks still required:
 
 Writes are limited to 400 new operations per minute per account. Reads are paginated (100 rows per tool page). Aggregate tools reject oversized results above 1,000 tasks or 5,000 completion records instead of silently returning incorrect totals. Use paginated tools for larger accounts. Hosting outages, expired sessions, and quota errors keep local pending changes for later retries.
 
-The change log, tombstones, and idempotency receipts are retained indefinitely in this preview. Before wide deployment, measure usage and define archival/retention with a full-resync and retry policy; deleting receipts or history arbitrarily would break these guarantees. OAuth Server is a Supabase beta capability, so live discovery/client compatibility remains a deployment checkpoint.
+The change log, tombstones, and idempotency receipts are retained indefinitely. Measure usage and define archival/retention with a full-resync and retry policy before removing history; deleting receipts or history arbitrarily would break these guarantees. OAuth Server is a Supabase beta capability, so live discovery/client compatibility remains a deployment checkpoint.
 
-The IndexedDB upgrade is additive (schema 2 → 3) and preserves existing records. Older desktop builds using schema 2 cannot open an already-upgraded schema 3 database. Export JSON before testing a preview if you need a rollback copy; do not uninstall and delete app data to resolve an update. The current release workflow deliberately accepts stable versions only, so the beta branch cannot accidentally publish a stable update. After acceptance, bump to 1.1.0, merge the reviewed branch, and use the existing Windows release/Pages pipeline.
+The IndexedDB upgrade is additive (schema 2 → 3) and preserves existing records. Older desktop builds using schema 2 cannot open an already-upgraded schema 3 database. Export JSON if you need a rollback copy; do not uninstall and delete app data to resolve an update. The release workflow accepts stable versions only. Bump the version and changelog, merge the reviewed branch, then dispatch the existing Windows release workflow. Pages derives installer links from the published release. Supabase migrations and Edge Functions are deployed separately; pushing code alone does not publish a desktop release or apply backend migrations.
 
 ## References
 

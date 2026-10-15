@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { db, saveTask } from '../lib/db';
+import { db, saveTask, setCompletion } from '../lib/db';
 import { enableLocalSync, resolveConflict, SyncEngine, type CloudTransport } from '../lib/cloudSync';
 import type { CloudEntity, OutboxOperation } from '../lib/cloudTypes';
 
@@ -35,6 +35,28 @@ describe('durable offline synchronization', () => {
     await new SyncEngine(account, transport({ pull: async () => ({ changes: [entity], next: 1, snapshot: 1, hasMore: false }) })).run();
     expect((await db.tasks.get(taskId))?.name).toBe('Cloud task');
     expect((await db.syncStates.get(account))?.checkpoint).toBe(1);
+  });
+  it('uploads a completion for a pulled MCP task after the worker is restarted', async () => {
+    await enableLocalSync(account, 'UTC');
+    const first = new SyncEngine(account, transport({ pull: async () => ({ changes: [entity], next: 1, snapshot: 1, hasMore: false }) }));
+    await first.run(); first.stop();
+    const task = (await db.tasks.get(taskId))!;
+    const completion = await setCompletion(account, task, '2026-10-19', true);
+    let uploaded: CloudEntity | undefined;
+    await new SyncEngine(account, transport({
+      apply: async operation => {
+        expect(operation.kind).toBe('completion');
+        expect(operation.entityId).toBe(`${account}:${taskId}:2026-10-19`);
+        expect(operation.payload).not.toHaveProperty('accountId');
+        expect(operation.payload).toMatchObject({ taskId, completed: true });
+        uploaded = { ...entity, kind: 'completion', id: operation.entityId, payload: operation.payload, origin: 'desktop', revision: 2 };
+        return { status: 'applied', entity: uploaded };
+      },
+      pull: async () => ({ changes: [uploaded!], next: 2, snapshot: 2, hasMore: false })
+    })).run();
+    expect(await db.outbox.count()).toBe(0);
+    expect((await db.completions.get(completion.id))?.completed).toBe(true);
+    expect((await db.syncStates.get(account))?.checkpoint).toBe(2);
   });
   it('cancels an in-flight response when the account session ends', async () => {
     await enableLocalSync(account, 'UTC');
